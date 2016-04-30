@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+from __future__ import print_function
 import sys
 import re
 import json
@@ -71,6 +73,7 @@ def _parse_stream_map(text):
 
         return videoinfo
 
+
 def _extract_fmt(text):
         """YouTube does not pass you a completely valid URLencoded form, I
         suspect this is suppose to act as a deterrent.. Nothing some regulular
@@ -85,69 +88,73 @@ def _extract_fmt(text):
                 return itag, None
             return itag, dict(zip(ENCODING_KEYS, attr))
 
+
 def get_videos(my_url):
-	videos = []
-	_fmt_values = []
-	response = urlopen(my_url)
-	if response:
-		content = response.read().decode("utf-8")
-		try:
-			player_conf = content[18 + content.find("ytplayer.config = "):]
-			bracket_count = 0
-			for i, char in enumerate(player_conf):
-				if char == "{":
-					bracket_count += 1
-				elif char == "}":
-					bracket_count -= 1
-					if bracket_count == 0:
-						break
-			else:
-				print("Cannot get JSON from HTML")
+    videos = []
+    _fmt_values = []
+    response = urlopen(my_url)
+    if response:
+        content = response.read().decode("utf-8")
+        try:
+            player_conf = content[18 + content.find("ytplayer.config = "):]
+            bracket_count = 0
+            for i, char in enumerate(player_conf):
+                if char == "{":
+                    bracket_count += 1
+                elif char == "}":
+                    bracket_count -= 1
+                    if bracket_count == 0:
+                        break
+            else:
+                print("Cannot get JSON from HTML")
 
-			index = i + 1
-			data = json.loads(player_conf[:index])
+            index = i + 1
+            data = json.loads(player_conf[:index])
 
-		except Exception as e:
-			print("Cannot decode JSON: {0}".format(e))
+        except Exception as e:
+            print("Cannot decode JSON: {0}".format(e))
 
 
-		stream_map = _parse_stream_map(
+        stream_map = _parse_stream_map(
             data["args"]["url_encoded_fmt_stream_map"])
 
-		title = data["args"]["title"]
-		print("title:" + title)
-		js_url = "http:" + data["assets"]["js"]
-		video_urls = stream_map["url"]
+        title = data["args"]["title"]
+        print("title:" + title)
+        js_url = "http:" + data["assets"]["js"]
+        video_urls = stream_map["url"]
 
         for i, url in enumerate(video_urls):
-		try:
-	       		fmt, fmt_data = _extract_fmt(url)
-			if fmt_data["extension"] == "mp4" and fmt_data["profile"] == "High":
-	        		download(url, title)
-		     	_fmt_values.append(fmt)
-		except KeyError:
-			continue
+            try:
+                fmt, fmt_data = _extract_fmt(url)
+                if fmt_data["extension"] == "mp4" and fmt_data["profile"] == "High":
+                    download(url, title)
+                    _fmt_values.append(fmt)
+            except KeyError:
+                continue
+
 
 def download(url, filename):
-	chunk_size = 8 * 1024
-	response = urlopen(url)
-	_bytes_received = 0
+    chunk_size = 8 * 1024
+    response = urlopen(url)
+    _bytes_received = 0
 
-	with open(filename, 'wb') as dst_file :
-		while True:
-			_buffer = response.read(chunk_size)
-			if not _buffer:
-				break
-			_bytes_received += len(_buffer)
-			dst_file.write(_buffer)
+    with open(filename, 'wb') as dst_file :
+        while True:
+            _buffer = response.read(chunk_size)
+            if not _buffer:
+                break
+            _bytes_received += len(_buffer)
+            dst_file.write(_buffer)
+
 
 if __name__ == '__main__':
+
     with open(sys.argv[1]) as f:
        urls = f.readlines()
 
     for my_url in urls:
-        if my_url:
+        try:
             get_videos(my_url)
             print("Done!")
-        else:
-            print("Usage: python youtube.py http://www.youtube.com/watch?v=rKE6PCXZITM")
+        except ValueError:
+            print("Url not correct:{}".format(my_url))
