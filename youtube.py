@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 from __future__ import print_function
-import sys
 import re
 import json
 from urlparse import urlparse, parse_qs, unquote
 from urllib2 import urlopen
+import argparse
 
 ENCODING = {
     # Flash Video
@@ -149,12 +149,22 @@ def download(url, filename):
 
 if __name__ == '__main__':
 
-    with open(sys.argv[1]) as f:
-       urls = f.readlines()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-f", "--file", type=str, required=False, help='provide file with urls')
+    parser.add_argument("-u", "--url", type=str, required=False, help='provide single video url')
+    args = parser.parse_args()
 
-    for my_url in urls:
-        try:
-            get_videos(my_url)
-            print("Done!")
-        except ValueError:
-            print("Url not correct:{}".format(my_url))
+    if args.file:
+        with open(args.file) as f:
+           urls = f.readlines()
+
+        for my_url in urls:
+            try:
+                get_videos(my_url)
+                print("Done!")
+            except ValueError:
+                print("Url not correct:{}".format(my_url))
+
+    elif args.url:
+        get_videos(args.url)
+        print("Done!")
