@@ -11,7 +11,8 @@ import signal
 from urlparse import urlparse, parse_qs, unquote
 from urllib2 import urlopen
 
-chunk_size = 1024 * 1024; # 1 mb
+chunk_size = 1024 * 1024 # 1 mb
+sys_hault = False # shutdown gracefully switch
 
 ENCODING = {
     # Flash Video
@@ -145,6 +146,10 @@ def download(url, filename):
 
     with open(filename, 'wb') as dst_file:
         while True:
+            # Don't read anymore data, caught by signal.
+            if sys_hault:
+                sys.exit(0)
+
             _buffer = response.read(chunk_size)
             if not _buffer and bytes_received == download_size:
                 print("Video saved: %s" % os.path.join(os.getcwd(), filename))
@@ -153,8 +158,9 @@ def download(url, filename):
             dst_file.write(_buffer)
 
 def signal_handler(signal, frame):
-    print("\nCaught...sig %d" % signal)
-    sys.exit(0)
+    global sys_hault
+    sys_hault = True
+    print("Exiting...")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
