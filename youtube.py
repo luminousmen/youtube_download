@@ -1,10 +1,17 @@
 #!/usr/bin/env python
 from __future__ import print_function
+
 import re
+import os
+import sys
 import json
+import argparse
+import signal
+
 from urlparse import urlparse, parse_qs, unquote
 from urllib2 import urlopen
-import argparse
+
+chunk_size = 1024 * 1024; # 1 mb
 
 ENCODING = {
     # Flash Video
@@ -73,7 +80,6 @@ def _parse_stream_map(text):
 
         return videoinfo
 
-
 def _extract_fmt(text):
         """YouTube does not pass you a completely valid URLencoded form, I
         suspect this is suppose to act as a deterrent.. Nothing some regulular
@@ -88,11 +94,11 @@ def _extract_fmt(text):
                 return itag, None
             return itag, dict(zip(ENCODING_KEYS, attr))
 
-
 def get_videos(my_url):
     videos = []
     _fmt_values = []
     response = urlopen(my_url)
+
     if response:
         content = response.read().decode("utf-8")
         try:
@@ -132,27 +138,39 @@ def get_videos(my_url):
             except KeyError:
                 continue
 
-
 def download(url, filename):
-    chunk_size = 8 * 1024
     response = urlopen(url)
-    _bytes_received = 0
+    bytes_received = 0
+    download_size = int(response.info().getheader("Content-Length"))
 
-    with open(filename, 'wb') as dst_file :
+    with open(filename, 'wb') as dst_file:
         while True:
             _buffer = response.read(chunk_size)
-            if not _buffer:
+            if not _buffer and bytes_received == download_size:
+                print("Video saved: %s" % os.path.join(os.getcwd(), filename))
                 break
-            _bytes_received += len(_buffer)
+            bytes_received += len(_buffer)
             dst_file.write(_buffer)
 
+def signal_handler(signal, frame):
+    print("\nCaught...sig %d" % signal)
+    sys.exit(0)
 
 if __name__ == '__main__':
-
     parser = argparse.ArgumentParser()
-    parser.add_argument("-f", "--file", type=str, required=False, help='provide file with urls')
-    parser.add_argument("-u", "--url", type=str, required=False, help='provide single video url')
+    parser.add_argument("-f", "--file", type=str, required=False,
+                       help='Read in file with video urls separated by newlines')
+    parser.add_argument("-u", "--url", type=str, required=False,
+                       help='URL to YouTube video')
+    parser.add_argument("-c", "--chunksize", type=int, required=False,
+                       help="Increase the chunksize (mb), 1MB is default (e.g. --chucksize 10 would be 10 mb) ")
     args = parser.parse_args()
+
+    mb = 1024 * 1024
+    if args.chunksize:
+        chunk_size = args.chunksize * mb
+
+    signal.signal(signal.SIGINT, signal_handler)
 
     if args.file:
         with open(args.file) as f:
