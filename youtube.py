@@ -13,6 +13,7 @@ from urllib2 import urlopen
 
 chunk_size = 1024 * 1024 # 1 mb
 sys_hault = False # shutdown gracefully switch
+state = None # Current state of the script
 
 ENCODING = {
     # Flash Video
@@ -143,9 +144,11 @@ def download(url, filename):
     response = urlopen(url)
     bytes_received = 0
     download_size = int(response.info().getheader("Content-Length"))
+    global state
 
     with open(filename, 'wb') as dst_file:
         while True:
+            state = "downloading"
             # Don't read anymore data, caught by signal.
             if sys_hault:
                 sys.exit(0)
@@ -153,14 +156,21 @@ def download(url, filename):
             _buffer = response.read(chunk_size)
             if not _buffer and bytes_received == download_size:
                 print("Video saved: %s" % os.path.join(os.getcwd(), filename))
+                state = None
                 break
             bytes_received += len(_buffer)
             dst_file.write(_buffer)
 
 def signal_handler(signal, frame):
     global sys_hault
+    global state
     sys_hault = True
+
     print("Exiting...")
+    if state == "downloading":
+        sys_hault = True
+    else:
+        sys.exit(0)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
