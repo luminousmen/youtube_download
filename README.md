@@ -11,3 +11,8 @@ OR with single video url:
 ```bash
 $ ./youtube.py -u youtube_url
 ```
+
+Also you can specify needed chunk size in Kbs, default chunk size is 16Kb:
+```bash
+$ ./youtube.py -c 1024
+```

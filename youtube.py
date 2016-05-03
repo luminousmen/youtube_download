@@ -151,7 +151,6 @@ def download(url, filename):
 
     with open(filename, 'wb') as dst_file:
         while True:
-            # Don't read anymore data, caught by signal.
 
             _buffer = response.read(CHUNK_SIZE)
             if not _buffer and bytes_received == download_size:
