@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+
 from __future__ import print_function
 
 import re
@@ -11,9 +12,8 @@ import signal
 from urlparse import urlparse, parse_qs, unquote
 from urllib2 import urlopen
 
-chunk_size = 1024 * 1024 # 1 mb
-sys_hault = False # shutdown gracefully switch
-state = None # Current state of the script
+
+CHUNK_SIZE = 16 * 1024 # 16 Kb
 
 ENCODING = {
     # Flash Video
@@ -57,17 +57,18 @@ ENCODING_KEYS = (
     'audio_bitrate'
 )
 
+
 def _parse_stream_map(text):
         """Python's `parse_qs` can't properly decode the stream map
         containing video data so we use this instead.
         """
         videoinfo = {
-            "itag": [],
-            "url": [],
-            "quality": [],
-            "fallback_host": [],
-            "s": [],
-            "type": []
+            "itag":             [],
+            "url":              [],
+            "quality":          [],
+            "fallback_host":    [],
+            "s":                [],
+            "type":             []
         }
 
         # Split individual videos
@@ -82,6 +83,7 @@ def _parse_stream_map(text):
 
         return videoinfo
 
+
 def _extract_fmt(text):
         """YouTube does not pass you a completely valid URLencoded form, I
         suspect this is suppose to act as a deterrent.. Nothing some regulular
@@ -95,6 +97,7 @@ def _extract_fmt(text):
             if not attr:
                 return itag, None
             return itag, dict(zip(ENCODING_KEYS, attr))
+
 
 def get_videos(my_url):
     videos = []
@@ -127,7 +130,7 @@ def get_videos(my_url):
             data["args"]["url_encoded_fmt_stream_map"])
 
         title = data["args"]["title"]
-        print("title:" + title)
+        print("Title: " + title)
         js_url = "http:" + data["assets"]["js"]
         video_urls = stream_map["url"]
 
@@ -140,51 +143,43 @@ def get_videos(my_url):
             except KeyError:
                 continue
 
+
 def download(url, filename):
     response = urlopen(url)
     bytes_received = 0
     download_size = int(response.info().getheader("Content-Length"))
-    global state
 
     with open(filename, 'wb') as dst_file:
         while True:
-            state = "downloading"
             # Don't read anymore data, caught by signal.
-            if sys_hault:
-                sys.exit(0)
 
-            _buffer = response.read(chunk_size)
+            _buffer = response.read(CHUNK_SIZE)
             if not _buffer and bytes_received == download_size:
                 print("Video saved: %s" % os.path.join(os.getcwd(), filename))
-                state = None
                 break
             bytes_received += len(_buffer)
             dst_file.write(_buffer)
 
-def signal_handler(signal, frame):
-    global sys_hault
-    global state
-    sys_hault = True
 
-    print("Exiting...")
-    if state == "downloading":
-        sys_hault = True
-    else:
-        sys.exit(0)
+def signal_handler(signal, frame):
+    print("\nExiting...")
+    sys.exit(0)
+
+
 
 if __name__ == '__main__':
+
     parser = argparse.ArgumentParser()
     parser.add_argument("-f", "--file", type=str, required=False,
-                       help='Read in file with video urls separated by newlines')
+                       help='file with video urls separated by newlines')
     parser.add_argument("-u", "--url", type=str, required=False,
                        help='URL to YouTube video')
     parser.add_argument("-c", "--chunksize", type=int, required=False,
-                       help="Increase the chunksize (mb), 1MB is default (e.g. --chucksize 10 would be 10 mb) ")
+                       help="increase the chunksize (Kb), 16Kb is default (e.g. --chunksize 1024 would be 1 mb) ")
     args = parser.parse_args()
 
-    mb = 1024 * 1024
     if args.chunksize:
-        chunk_size = args.chunksize * mb
+        CHUNK_SIZE = args.chunksize * 1024 # in Kbs
 
     signal.signal(signal.SIGINT, signal_handler)
 
@@ -200,5 +195,8 @@ if __name__ == '__main__':
                 print("Url not correct:{}".format(my_url))
 
     elif args.url:
-        get_videos(args.url)
-        print("Done!")
+        try:
+            get_videos(args.url)
+            print("Done!")
+        except ValueError:
+            print("Url not correct:{}".format(my_url))
