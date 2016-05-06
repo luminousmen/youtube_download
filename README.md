@@ -1,3 +1,5 @@
+[![codebeat badge](https://codebeat.co/badges/de3339f0-ebcd-4fed-b7aa-16d69c818f9b)](https://codebeat.co/projects/github-com-luminousmen-youtube_download)
+
 youtube_download
 ======
 
