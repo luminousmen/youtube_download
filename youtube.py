@@ -6,14 +6,14 @@ import re
 import os
 import sys
 import json
-import argparse
 import signal
+import argparse
 
-from urlparse import urlparse, parse_qs, unquote
+from urlparse import unquote
 from urllib2 import urlopen
 
 
-CHUNK_SIZE = 16 * 1024 # 16 Kb
+CHUNK_SIZE = 16 * 1024  # 16 Kb
 
 ENCODING = {
     # Flash Video
@@ -59,48 +59,47 @@ ENCODING_KEYS = (
 
 
 def _parse_stream_map(text):
-        """Python's `parse_qs` can't properly decode the stream map
-        containing video data so we use this instead.
-        """
-        videoinfo = {
-            "itag":             [],
-            "url":              [],
-            "quality":          [],
-            "fallback_host":    [],
-            "s":                [],
-            "type":             []
-        }
+    """Python's `parse_qs` can't properly decode the stream map
+    containing video data so we use this instead.
+    """
+    videoinfo = {
+        "itag":             [],
+        "url":              [],
+        "quality":          [],
+        "fallback_host":    [],
+        "s":                [],
+        "type":             []
+    }
 
-        # Split individual videos
-        videos = text.split(",")
-        # Unquote the characters and split to parameters
-        videos = [video.split("&") for video in videos]
+    # Split individual videos
+    videos = text.split(",")
+    # Unquote the characters and split to parameters
+    videos = [video.split("&") for video in videos]
 
-        for video in videos:
-            for kv in video:
-                key, value = kv.split("=")
-                videoinfo.get(key, []).append(unquote(value))
+    for video in videos:
+        for kv in video:
+            key, value = kv.split("=")
+            videoinfo.get(key, []).append(unquote(value))
 
-        return videoinfo
+    return videoinfo
 
 
 def _extract_fmt(text):
-        """YouTube does not pass you a completely valid URLencoded form, I
-        suspect this is suppose to act as a deterrent.. Nothing some regulular
-        expressions couldn't handle.
-        :params text: The malformed data contained within each url node.
-        """
-        itag = re.findall('itag=(\d+)', text)
-        if itag and len(itag) is 1:
-            itag = int(itag[0])
-            attr = ENCODING.get(itag, None)
-            if not attr:
-                return itag, None
-            return itag, dict(zip(ENCODING_KEYS, attr))
+    """YouTube does not pass you a completely valid URLencoded form, I
+    suspect this is suppose to act as a deterrent.. Nothing some regulular
+    expressions couldn't handle.
+    :params text: The malformed data contained within each url node.
+    """
+    itag = re.findall('itag=(\d+)', text)
+    if itag and len(itag) is 1:
+        itag = int(itag[0])
+        attr = ENCODING.get(itag, None)
+        if not attr:
+            return itag, None
+        return itag, dict(zip(ENCODING_KEYS, attr))
 
 
 def get_videos(my_url):
-    videos = []
     _fmt_values = []
     response = urlopen(my_url)
 
@@ -165,7 +164,6 @@ def signal_handler(signal, frame):
     sys.exit(0)
 
 
-
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
@@ -178,7 +176,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.chunksize:
-        CHUNK_SIZE = args.chunksize * 1024 # in Kbs
+        CHUNK_SIZE = args.chunksize * 1024  # in Kbs
 
     signal.signal(signal.SIGINT, signal_handler)
 
