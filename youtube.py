@@ -10,7 +10,9 @@ import signal
 import argparse
 
 from urlparse import unquote
-from urllib2 import urlopen
+import urllib2
+
+from slugify import slugify
 
 
 CHUNK_SIZE = 16 * 1024  # 16 Kb
@@ -57,6 +59,15 @@ ENCODING_KEYS = (
     'audio_bitrate'
 )
 
+HEADERS = {
+    'User-Agent': 'Mozilla/5.0',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3',
+    'Accept-Encoding': 'none',
+    'Accept-Language': 'en-US,en;q=0.8',
+    'Connection': 'keep-alive'
+}
+
 
 def _parse_stream_map(text):
     """Python's `parse_qs` can't properly decode the stream map
@@ -101,7 +112,8 @@ def _extract_fmt(text):
 
 def get_videos(my_url):
     _fmt_values = []
-    response = urlopen(my_url)
+    req = urllib2.Request(my_url, headers=HEADERS)
+    response = urllib2.urlopen(req)
 
     if response:
         content = response.read().decode("utf-8")
@@ -128,7 +140,7 @@ def get_videos(my_url):
         stream_map = _parse_stream_map(
             data["args"]["url_encoded_fmt_stream_map"])
 
-        title = data["args"]["title"]
+        title = slugify(data["args"]["title"])
         print("Title: " + title)
         js_url = "http:" + data["assets"]["js"]
         video_urls = stream_map["url"]
@@ -144,7 +156,9 @@ def get_videos(my_url):
 
 
 def download(url, filename):
-    response = urlopen(url)
+    req = urllib2.Request(url, headers=HEADERS)
+    response = urllib2.urlopen(req)
+
     bytes_received = 0
     download_size = int(response.info().getheader("Content-Length"))
 
